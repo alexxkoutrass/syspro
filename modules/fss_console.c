@@ -1,86 +1,74 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 
 
-int main() {
+int console_in(char* command, char* pipe_in) {
+    int fss_in = open(pipe_in, O_WRONLY);
+    if (fss_in == -1) {
+        perror("Error opening the pipe_in for reading\n");
+        return -1;
+    }
 
-}
-
-
-int add(char *command, char *pipe_in, char *pipe_out) {
-    int pipe_in = open(pipe_in, O_WRONLY);
-    int pipe_out = open(pipe_out, O_RDONLY);
-
-    write(pipe_in, command, strlen(command));
-
-    char buffer[1024];
-    read(pipe_out, buffer, sizeof(buffer));
-    printf("Manager replied: %s\n", buffer);
-
-    close(pipe_in);
-    close(pipe_out);
+    ssize_t a = write(fss_in, command, strlen(command));
+    if (a == -1) {
+        perror("Error sending the command to fss_manager\n");
+    }
+    
+    if (close(fss_in) == -1) {
+        perror("Error closing logfile");
+    }
     return 0;
 }
 
-int status(char* command, char* pipe_in, char* pipe_out) {
-    int pipe_in = open(pipe_in, O_WRONLY);
-    int pipe_out = open(pipe_out, O_RDONLY);
-
-    write(pipe_in, command, strlen(command));
-
-    char buffer[1024];
-    read(pipe_out, buffer, sizeof(buffer));
-    printf("Manager replied: %s\n", buffer);
-
-    close(pipe_in);
-    close(pipe_out);
-    return 0;
-}
-
-int cancel(char* command, char* pipe_in, char* pipe_out) {
-    int pipe_in = open(pipe_in, O_WRONLY);
-    int pipe_out = open(pipe_out, O_RDONLY);
-
-    write(pipe_in, command, strlen(command));
+int out(char* pipe_out, char* logfile) {
+    int fss_out = open(pipe_out, O_RDONLY);
+    if (fss_out == -1) {
+        perror("Error opening the pipe_in for writing\n");
+        return -1;
+    }
 
     char buffer[1024];
-    read(pipe_out, buffer, sizeof(buffer));
-    printf("Manager replied: %s\n", buffer);
+    ssize_t bytes_read;
+    
+    int fd = open(logfile, O_WRONLY | O_CREAT | O_APPEND, 0644);
+    if (fd == -1) {
+        perror("Error opening the log-file\n");
+        close(fss_out);
+        return -1;
+    }
 
-    close(pipe_in);
-    close(pipe_out);
-    return 0;
-}
+    bytes_read = read(fss_out, buffer, sizeof(buffer) - 1);
+    if (bytes_read > 0) {
+        buffer[bytes_read] = '\0';
 
-int sync(char* command, char* pipe_in, char* pipe_out) {
-    int pipe_in = open(pipe_in, O_WRONLY);
-    int pipe_out = open(pipe_out, O_RDONLY);
+        printf("Manager replied: %s\n", buffer);
 
-    write(pipe_in, command, strlen(command));
+        ssize_t bytes_wrote = write(fd, buffer, bytes_read);
+        if (bytes_wrote == -1) {
+            perror("Error writing in log-file\n");
+        } else if (bytes_wrote != bytes_read) {
+            fprintf(stderr, "Warning: Partially wrote to log-file...\n");
+        }
 
-    char buffer[1024];
-    read(pipe_out, buffer, sizeof(buffer));
-    printf("Manager replied: %s\n", buffer);
-
-    close(pipe_in);
-    close(pipe_out);
-    return 0;
-}
-
-int shutdown(char* command, char* pipe_in, char* pipe_out) {
-    int pipe_in = open(pipe_in, O_WRONLY);
-    int pipe_out = open(pipe_out, O_RDONLY);
-
-    write(pipe_in, command, strlen(command));
-
-    char buffer[1024];
-    read(pipe_out, buffer, sizeof(buffer));
-    printf("Manager replied: %s\n", buffer);
-
-    close(pipe_in);
-    close(pipe_out);
+    } else {
+        perror("Error reading from pipe_out\n");
+        return -1;
+    }
+    
+    if (close(fd) == -1) {
+        perror("Error closing logfile\n");
+        return -1;
+    }
+    if (close(fss_out) == -1) {
+        perror("Error closing pipe_out\n");
+        return -1;
+    }
+    
     return 0;
 }
 
