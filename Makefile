@@ -1,33 +1,39 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Werror -g -I$(INCLUDE)
+CFLAGS = -Wall -g -I$(INCLUDE)
 
 # Paths
 MODULES = ./modules
 INCLUDE = ./include
+ADTS = ./adts
 
-# Automatically find all .c files and convert them to .o
+# Find all source files
 MODULES_SRC = $(wildcard $(MODULES)/*.c)
+ADTS_SRC = $(wildcard $(ADTS)/*.c)
+SRC = $(MODULES_SRC) $(ADTS_SRC)
 
-# Executable program
-EXEC = out
+# Object files (replace .c with .o)
+OBJS = $(SRC:.c=.o)
+
+# Executable name
+EXEC = fss_manager
 
 # Default rule
 all: $(EXEC)
 
-# Link object files to create the executable
-$(EXEC): $(MODULES_SRC)
-	$(CC) -o $@ $(MODULES_SRC) -lm  # Add -lm here
+# Link
+$(EXEC): $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
-# Compile .c files from MODULES and ADTs directories into .o files
-$(MODULES)/%.o: $(MODULES)/%.c
+# Pattern rule to compile .c to .o
+%.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Run the executable
+# Run
 run: all
-	./$(EXEC) -i init.txt
+	./$(EXEC)
 
-# Clean the build directory
+# Clean
 clean:
-	rm -f $(MODULES_SRC) $(EXEC)
+	rm -f $(OBJS) $(EXEC)
 	clear
